@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+<style>
+
+  
+    /* Tooltip container style */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    /* Tooltip text style */
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 120px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    /* Tooltip container style when hovering */
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+
+/* Style table header */
+th {
+  background-color: #f2f2f2;
+}
+
+/* Style table cells */
+td {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+ table {
+ /* table-layout: fixed;*/
+  border-collapse: collapse;
+  width: 50%;
+}
+
+td+td {
+  width: auto;
+}
+ 
+
+</style>
+
+
+
+</head>
+<body>
+
+<h1>家樂福數據分析(2020/5~2021/12)</h1>
+
+
+<button id='topK_sales', type='button'> 銷售額前5名的商品</button>
+<button id='topK_quantity', type='button'> 銷售量前5名的商品</button>
+<button id='get_customer_purchase_info', type='button'>顧客購買總覽</button>
+<button id='clear_all', type='button'> Clear all </button>
+
+
+<div id="chartContainer"> 
+</div>
+<div id='recommanded_area'>
+</div>
+
+<br>
+
+
+<script>
+
+
+
+//------websocket stuff--------------------
+  if ('WebSocket' in window){
+	 console.log('WebSocket is supported');
+
+  }
+ var socket = io();
+ 
+ 
+socket.on('connect', function() {
+	 console.log('I connect successfully');
+
+});
+
+
+
+socket.on('topK_sales', function(msg) {
+	console.log(msg);
+	
+		  //update bar chart data
+	var data = {
+		labels: [],
+		datasets: [{
+		  label: 'Top K 銷售商品',
+		  data: [],
+		  backgroundColor: ['red', 'green', 'blue', 'orange']
+		}]
+    };
+	
+	
+	var table = $('<table>').addClass('my-table');
+
+	  // Create the table header row
+	  var headerRow = $('<tr>');
+	  headerRow.append($('<th>').text('商品名稱'));
+	  headerRow.append($('<th>').text('銷售額'));
+	  headerRow.append($('<th>').text('銷售量'));
+	  table.append(headerRow);
+	  
+	 
+	  
+
+	  // Create and add rows with data
+	 for (var i in msg['data']) {
+		item=msg['data'][i]	
+		var row = $('<tr>');
+		row.append($('<td>').text(item[1]));
+		row.append($('<td>').text(item[2]));
+		row.append($('<td>').text(item[3]));		
+		table.append(row);
+		
+		data.labels.push(item[1]);
+		data.datasets[0].data.push(item[2]);
+      }
+	  
+
+	    createChart(data);
+	  $('#recommanded_area').append(table);
+
+});
+
+socket.on('get_customer_purchase_info', function(msg) {
+
+	items=JSON.parse( msg['data'])
+	console.log(items)
+	
+	var table = $('<table>').addClass('my-table');
+
+	  // Create the table header row
+	  var headerRow = $('<tr>');
+
+	  headerRow.append($('<th>').text('客戶ID'));
+	  headerRow.append($('<th>').text('累計金額'));
+	  table.append(headerRow);
+
+	  // Create and add rows with data
+	  for (var i in items) {
+		var row = $('<tr>');
+		//<a href="#" id="myLink">Click me!</a>
+		//row.append($('<td>').text('<a href="#" id='+items[i]['customer']+'>'+items[i]['customer']+'</a>'));
+		//row.append($('<td>').text(items[i]['customer']));
+		
+		row.append('<td><a href="#" id='+items[i]['customer']+"'><span class='tooltip'>"+
+				items[i]['customer']+'<span class="tooltiptext">'+items[i]['sum']+'</span></span></a></td>');
+		row.append('<td>'+items[i]['sum']+'</td>');
+		
+		table.append(row);
+      }
+	  $('#recommanded_area').append(table);
+
+});
+
+
+socket.on('get_invoice_info', function(msg) {
+
+	console.log(msg);
+	items=JSON.parse( msg['data'])
+	console.log(items)
+	for (var i in items) {
+		//item=msg['data'][i]	
+		console.log(items[i]['id']+','+items[i]['sales_price'])
+		$('#recommanded_area').append('<b>'+items[i]['id']+'</b>(銷售額:'+items[i]['sales_price']+')</br>')
+	}	
+
+});
+
+
+
+$("#clear_all").on('click', function(e){
+    //$("#item-table tbody").empty();
+	//const canvas = document.getElementById("myBarChart");
+   // const ctx = canvas.getContext("2d");
+	//ctx.clearRect(0, 0, canvas.width, canvas.height);
+	$("#recommanded_area").empty();
+	$("#chartContainer").empty();
+	
+	
+});
+
+
+//-----to get data from pandas------
+
+$("#topK_sales").on('click', function(e){
+
+  socket.emit('topK_sales',5)
+
+});
+
+
+$("#get_customer_purchase_info").on('click', function(e){
+
+  socket.emit('get_customer_purchase_info','')
+
+});
+
+
+//-------------------
+ // Sample data for the bar chart
+
+  
+
+  var myBarChart; // Declare the chart variable outside the createChart function
+
+  // Function to create and update the bar chart
+  function createChart(data) {
+	// Get the canvas element
+	var canvas = document.createElement("canvas");
+	canvas.width = 600;
+	canvas.height = 400;
+	canvas.id = "myBarChart";
+
+	// Append the canvas to the chartContainer div
+	$("#chartContainer").empty(); // Clear any existing canvas
+	$("#chartContainer").append(canvas);
+
+	// Get the canvas context
+	  var ctx = canvas.getContext("2d");
+	  myBarChart = new Chart(ctx, {
+		type: 'bar',
+		data: data,
+		options: {
+			responsive: false,
+			indexAxis: 'y'  //horizontal
+		}
+	  });
+
+  }
+
+  /*  $('#createChart').on('click', function() {
+     createChart(data);
+	
+	});
+*/
+
+</script>
+</body>
+</html>
