@@ -1,13 +1,15 @@
-from flask import Flask, render_template
+from flask import *  
 from flask_socketio import SocketIO, emit
 import base64
 import datetime
 import json
 import pandas as pd 
+from aimodel import AI_model #joseph
+import os 
 
 from EDA_carrefour import * 
 
-app = Flask(__name__,static_folder='web/')
+app = Flask(__name__,static_folder='web')
 
 # http://127.0.0.1:3000
 
@@ -33,6 +35,10 @@ def goto_item():
 @app.route('/analysis')
 def goto_analysis():
     return render_template('data_analysis.html')  
+    
+@app.route('/upload')
+def upload_file():
+    return render_template('file_upload_form.html')  
     
 def get_current_user():
     return {'name':'joseph','password':'1234'}
@@ -126,9 +132,44 @@ def  trigger_new_item(msg):
      newitems=json.dumps(newitems)
      emit('new_item_event', {'data': newitems }, broadcast=False)
 
+@app.route('/upload', methods = ['POST','GET'])  
+def success():  
+    if request.method == 'POST':  
+        f = request.files['file']  
+        f.save('web/upload/'+f.filename)  
+        
+        #predict the image 
+        img_file=os.path.join('web/upload',f.filename)
+        prob,label=model.predict(img_file)
+
+        print('Class:', label, end='')
+        print('Confidence score:', prob)
+     
+        return render_template("success.html", name = img_file,class_name=label,confidence=prob)  
+
+def init_gpu():
+    #----allocate more GPU memory if it needed--------
+    import tensorflow as tf
+    config = tf.compat.v1.ConfigProto(gpu_options = 
+                         tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8))
+    # device_count = {'GPU': 1}
+        
+    config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=config)
+    tf.compat.v1.keras.backend.set_session(session)
     
 if __name__ == '__main__':
+    
+    init_gpu() 
 
+    model_dir='model'
+    model_file='keras_Model.h5'
+    label_file='labels.txt'
 
-    socketio.run(app, debug=True, host='127.0.0.1', port=3000)
+    model_file=os.path.join(model_dir,model_file)
+    class_file=os.path.join(model_dir,label_file)
+    model=AI_model(model_file,class_file)
+    
+
+    socketio.run(app, debug=True, host='0.0.0.0', port=3000)
  
