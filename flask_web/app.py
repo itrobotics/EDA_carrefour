@@ -61,7 +61,7 @@ def save_img(msg):
 
     filename=datetime.datetime.now().strftime("%Y%m%d-%H%M%S")+'.png'
     base64_img_bytes = msg.encode('utf-8')
-    with open('./upload/'+filename, "wb") as save_file:
+    with open('./web/upload/'+filename, "wb") as save_file:
         save_file.write(base64.decodebytes(base64_img_bytes))
 
 
