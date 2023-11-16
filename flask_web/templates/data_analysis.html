@@ -123,6 +123,7 @@ socket.on('topK_sales', function(msg) {
 	  // Create the table header row
 	  var headerRow = $('<tr>');
 	  headerRow.append($('<th>').text('商品名稱'));
+	  headerRow.append($('<th>').text('商品單價'));
 	  headerRow.append($('<th>').text('銷售額'));
 	  headerRow.append($('<th>').text('銷售量'));
 	  table.append(headerRow);
@@ -136,11 +137,12 @@ socket.on('topK_sales', function(msg) {
 		var row = $('<tr>');
 		row.append($('<td>').text(item[1]));
 		row.append($('<td>').text(item[2]));
-		row.append($('<td>').text(item[3]));		
+		row.append($('<td>').text(item[3]));
+		row.append($('<td>').text(item[4]));		
 		table.append(row);
 		
 		data.labels.push(item[1]);
-		data.datasets[0].data.push(item[2]);
+		data.datasets[0].data.push(item[3]);
       }
 	  
 

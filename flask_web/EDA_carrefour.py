@@ -18,6 +18,21 @@ pid_to_name_dict = train_df.set_index('product')['product_name'].to_dict()
 name_to_pid_dict = {v:k for k,v in pid_to_name_dict.items()}
 
 
+def create_product_dict(df):
+    pid_to_price_dict = df.set_index('product')[['product_name','sales_price']].to_dict()
+    pid_to_product_info={}
+    for pid1, name in pid_to_price_dict['product_name'].items():
+        for pid2, price in pid_to_price_dict['sales_price'].items():
+            if pid1==pid2 :
+                pid_to_product_info[pid1]=(name,price)
+                #003dc937-e898-4259-870a-4a9afe2eacd6 003dc937-e898-4259-870a-4a9afe2eacd6 絲花極柔化妝棉66片 96
+                #print(pid1,pid2, name,price)   
+    
+    return pid_to_product_info
+
+pid_to_product_info=create_product_dict(train_df)
+
+
 #train_df.describe()
 #train_df.isna().sum()
 #Note: 原始 age_group 沒有缺資料, 但這裡存在1筆資料沒有age_group
@@ -32,12 +47,17 @@ train_df['day']=date.dt.day
 print(len(train_df))
 
 def query_name_by_pid(pid):
-    return pid_to_name_dict[pid]
+    name,price_unit=pid_to_product_info[pid]
+    return name,price_unit
 
 # ## 銷售額前K名商品
 def get_top_k_product(df,k,by_column='sales_price',plot=False):
     df_group_by_prod=df.groupby('product').sum().reset_index()
     df_group_by_prod=df_group_by_prod[['product','sales_price','quantity']]
+    #total sales=PxQ  #joseph ,20231116
+    df_group_by_prod['sales_total']=df_group_by_prod['sales_price']*df_group_by_prod['quantity']
+    if by_column=='sales_price':
+        by_column='sales_total'
     df_prod_sales=df_group_by_prod.sort_values(by=by_column,ascending=False)[:k]
     if plot:
         plt.figure(figsize=(6, 4))
@@ -47,10 +67,11 @@ def get_top_k_product(df,k,by_column='sales_price',plot=False):
     result=[]
     for i in range(len(df_prod_sales)):
         pid = df_prod_sales.iloc[i]['product']
-        price = df_prod_sales.iloc[i]['sales_price']
+        price = df_prod_sales.iloc[i]['sales_total']
         quantity = df_prod_sales.iloc[i]['quantity']
-        #print(pid,query_name_by_pid(pid),price,quantity)
-        result.append((pid,query_name_by_pid(pid),int(price),int(quantity)))
+        name,unit_price=query_name_by_pid(pid)
+        #print(pid,name,unit_price,price,quantity)
+        result.append((pid,name,int(unit_price),int(price),int(quantity)))
            
     return result
 
@@ -180,6 +201,8 @@ if __name__=="__main__":
     
     #print(pid_to_name_dict['003dc937-e898-4259-870a-4a9afe2eacd6'])
     #print(name_to_pid_dict['絲花極柔化妝棉66片'])
+
+    print(pid_to_product_info['003dc937-e898-4259-870a-4a9afe2eacd6'])
     
     # # ## 銷售額前K名的商品
     k=3
