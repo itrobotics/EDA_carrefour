@@ -44,6 +44,8 @@ train_df['year']=date.dt.year
 train_df['YearMonth'] = date.dt.strftime('%Y-%m')
 train_df['day_name']=date.dt.day_name()
 train_df['day']=date.dt.day
+# add total sales
+train_df['total_sales']=train_df['sales_price']*train_df['quantity']
 print(len(train_df))
 
 def query_name_by_pid(pid):
@@ -51,13 +53,11 @@ def query_name_by_pid(pid):
     return name,price_unit
 
 # ## 銷售額前K名商品
-def get_top_k_product(df,k,by_column='sales_price',plot=False):
+def get_top_k_product(df,k,by_column='total_sales',plot=False):
     df_group_by_prod=df.groupby('product').sum().reset_index()
-    df_group_by_prod=df_group_by_prod[['product','sales_price','quantity']]
+    df_group_by_prod=df_group_by_prod[['product','total_sales','quantity']]
     #total sales=PxQ  #joseph ,20231116
-    df_group_by_prod['sales_total']=df_group_by_prod['sales_price']*df_group_by_prod['quantity']
-    if by_column=='sales_price':
-        by_column='sales_total'
+    
     df_prod_sales=df_group_by_prod.sort_values(by=by_column,ascending=False)[:k]
     if plot:
         plt.figure(figsize=(6, 4))
@@ -67,7 +67,7 @@ def get_top_k_product(df,k,by_column='sales_price',plot=False):
     result=[]
     for i in range(len(df_prod_sales)):
         pid = df_prod_sales.iloc[i]['product']
-        price = df_prod_sales.iloc[i]['sales_total']
+        price = df_prod_sales.iloc[i]['total_sales']
         quantity = df_prod_sales.iloc[i]['quantity']
         name,unit_price=query_name_by_pid(pid)
         #print(pid,name,unit_price,price,quantity)
@@ -82,7 +82,7 @@ def analyze_basic(df):
     total_transactions=len(df.groupby('id'))
     total_customer=len(df.groupby('customer'))
     #所有發票上的金額 ## same as train_df['sales_price'].sum()
-    total_sales=df.groupby('id')['sales_price'].sum().sum()   
+    total_sales=df.groupby('id')['total_sales'].sum().sum()   
     total_products=len(df.groupby('product'))
     
     print('發票數量:',total_transactions)
@@ -95,10 +95,10 @@ def analyze_basic(df):
 
 # ## 每個顧客的購買總金額
 def ananyze_customer_amount(df,plot=False):
-    df_group_by_customer=df.groupby('customer')['sales_price'].agg(['sum']).reset_index()  
+    df_group_by_customer=df.groupby('customer')['total_sales'].agg(['sum']).reset_index()  
     #長條圖: 每個顧客的購買總金額
     if plot:
-        df_group_by_customer=df.groupby('customer')['sales_price'].agg(['sum'])
+        df_group_by_customer=df.groupby('customer')['total_sales'].agg(['sum'])
         df_group_by_customer['sum'].plot(kind='bar');
         plt.title("Sales VS. customer")
         plt.xlabel("customer")
@@ -110,12 +110,12 @@ def ananyze_customer_amount(df,plot=False):
 
 # ## 每筆發票的金額
 def ananyze_invoice_amount(df,plot=False):
-    df_group_by_id=df.groupby('id')['sales_price'].sum().reset_index()    
-    df_group_by_id=df_group_by_id.sort_values(by='sales_price') #ascending=False
+    df_group_by_id=df.groupby('id')['total_sales'].sum().reset_index()    
+    df_group_by_id=df_group_by_id.sort_values(by='total_sales') #ascending=False
     #print(df_group_by_id)
     
     if plot:
-        plt.bar(df_group_by_id['id'], df_group_by_id['sales_price'])
+        plt.bar(df_group_by_id['id'], df_group_by_id['total_sales'])
         plt.ylabel('Age')
         plt.title('Amount Distribution (Reversed Order)')
         #plt.xticks(rotation=45)
@@ -127,7 +127,7 @@ def ananyze_invoice_amount(df,plot=False):
 
 # ## 查詢某客戶的購買歷史記錄(消費及其金額)
 def show_purchase_by_customer(df,cid):
-    dataset=df[df['customer']==cid].groupby('id')['sales_price'].agg(['sum']).reset_index()
+    dataset=df[df['customer']==cid].groupby('id')['total_sales'].agg(['sum']).reset_index()
     total_amounts=dataset['sum'].sum()
     print(f'客戶({cid})消費筆數:{len(dataset)}, 累積消費金額為 {total_amounts}元,平均每次消費{total_amounts/len(dataset)}' )
     return dataset,total_amounts
@@ -137,8 +137,8 @@ def show_purchase_by_customer(df,cid):
 
 # ## 查詢發票的交易明細
 def show_invoice(df,tid,show_detail=True):
-    data=df[df['id']==tid][['product_name','sales_price','quantity']]
-    amount=data['sales_price'].sum()
+    data=df[df['id']==tid][['product_name','sales_price','quantity','total_sales']].reset_index()
+    amount=data['total_sales'].sum()
     counts=len(data)
     if show_detail:
         print(f'發票號碼:{tid} 消費總金額: {amount} 元, 共 {counts} 樣商品，明細如下:')
@@ -155,7 +155,7 @@ def show_invoice(df,tid,show_detail=True):
 
 # # 每月總銷售額
 def analyze_revenue(df):
-    sales_per_month=train_df.groupby('YearMonth')['sales_price'].agg(['sum']).reset_index()
+    sales_per_month=train_df.groupby('YearMonth')['total_sales'].agg(['sum']).reset_index()
     plt.figure(figsize=(8, 6))
     sns.barplot(data=sales_per_month,x='YearMonth',y='sum')
     plt.title('Sales VS YearMonth')
@@ -169,7 +169,7 @@ def analyze_revenue(df):
 
 def analyze_store_amount(df):
     print('共有店家:',len (df.groupby('store')))
-    sales_per_month_store=df.groupby(['YearMonth','store'])['sales_price'].agg(['sum']).reset_index()
+    sales_per_month_store=df.groupby(['YearMonth','store'])['total_sales'].agg(['sum']).reset_index()
     sales_per_month_store
     plt.figure(figsize=(10, 6))
     plt.xticks(rotation=45)
@@ -179,7 +179,7 @@ def analyze_store_amount(df):
 # ## 分店每月銷售狀況
 
 def analyze_store_sales(df,store_id,plot=False):
-    sales_per_month_store=df.groupby(['YearMonth','store'])['sales_price'].agg(['sum']).reset_index()
+    sales_per_month_store=df.groupby(['YearMonth','store'])['total_sales'].agg(['sum']).reset_index()
     data=sales_per_month_store[sales_per_month_store['store']==store_id]
     data=data[['YearMonth','sum']]
     # Create a DataFrame with all months (including missing ones) and fill missing values with 0
@@ -207,7 +207,7 @@ if __name__=="__main__":
     # # ## 銷售額前K名的商品
     k=3
     print(f'----------銷售額前 {k}名的商品-----------------')
-    top_K_prod=get_top_k_product(train_df,k,'sales_price')
+    top_K_prod=get_top_k_product(train_df,k,'total_sales')
     
    
     for i in top_K_prod: print(i)

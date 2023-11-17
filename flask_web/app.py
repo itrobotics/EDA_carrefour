@@ -102,7 +102,7 @@ def  trigger_topK_sales(msg):
     print(msg)
    
     print(f'----------銷售額前 {k}名的商品-----------------')
-    top_K_prod=get_top_k_product(train_df,k,'sales_price')
+    top_K_prod=get_top_k_product(train_df,k,'total_sales')
     for i in top_K_prod: print(i)
     
     emit('topK_sales', {'data': top_K_prod}, broadcast=False)
