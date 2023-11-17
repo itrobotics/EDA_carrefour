@@ -1,17 +1,207 @@
-<html>  
-<head>  
-    <title>upload</title>  
-	<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
-</head>  
-<body>  
-    <form action = "/upload" method = "post" enctype="multipart/form-data">  
-        <input type="file" name="file" />  	
-        <input type = "submit" value="Upload"> 
+<!DOCTYPE html>
+<html>
+  <head>
+
+    
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Smart Shopping</title>
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    
+    <style>
+        #cameraFileInput {
+          display: none;
+        }
+
+        #pictureFromCamera {
+          width: 60%;
+          height: 60%;
+          margin-top: 1px;
+        }
+
+        .btn {
+          display: inline-block;
+          background-color: #00b531;
+          color: white;
+          padding: 8px 12px;
+          border-radius: 4px;
+          font-size: 16px;
+          cursor: pointer;
+        }
+
+        .btn:hover {
+          filter: brightness(0.9);
+        }
+		
+	.container {
+		display: flex;
+		align-items: center; /* Aligns items vertically */
+		justify-content: center; /* Aligns items horizontally */
+		height: 100vh; /* Adjust as needed */
+	}
+
+	.left-side {
+		flex: 3; /* Adjust the ratio if needed */
+		padding: 20px;
+	}
+
+	.right-side {
+		flex: 3; /* Adjust the ratio if needed */
+		padding: 20px;
+		text-align: left;
+	}
+
+	.left-side img {
+		/*width: 100%; Makes the image responsive */
+		height: auto;
+	}
+
+      
+    </style>
+    
+    
+  </head>
+  <body>
+    <h1>Smart Shopping</h1>
+
+    <!-- The `label` is attached to the hidden file input -->
+    <label for="cameraFileInput">
+      <span class="btn">Open camera</span>
+
+      <!-- The hidden file `input` for opening the native camera -->
+    
+		<input type="file" accept="image/*" capture="camera" id="cameraFileInput">
+     
+    </label>
+    
+    
+        <input type="button"  id="uploadButton" onclick="uploadImage()" value="商品識別"> 
+        
+    
+
+    <!-- displays the picture uploaded from the native camera -->
+	 <div class="container">
+	
+	 <div class="left-side">
+		<H1>
+			<div id="responseContainer"> </H1>
+			<img id="pictureFromCamera" >
+		
+	</div>
+	<div class="right-side">
+	<H3>
+		<div id="recommandContainer"> </div>
+		<ol id="RecommandList">
+			<!-- List items will be added here dynamically -->
+		</ol>
+	 </H3>
+	</div>
+	
+	
+	
+	</div>
+  </div>
+
+    <script>
+     		
+		
+		document.getElementById('cameraFileInput').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            // Create a FileReader object
+            var reader = new FileReader();
+
+            // Set up what happens when the FileReader loads
+            reader.onload = function(e) {
+                var photo = document.getElementById('pictureFromCamera');
+                photo.src = e.target.result;
+                //photo.style.display = 'none';
+				$('#responseContainer').empty();
+				$('#recommandContainer').empty();
+				$('#RecommandList').empty();
+				
+            };
+		}
+			  // Read the file as a Data URL (base64 encoded string)
+            reader.readAsDataURL(e.target.files[0]);
+		
+		});
+		
 		
 	
-    </form>  
+
+     
+        
+        
+        function uploadImage() {
+         
+		  var photo = document.getElementById('pictureFromCamera');
+          if (photo.src) {
+           
+		   const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = photo.width;
+            canvas.height = photo.height;
+            context.drawImage(photo, 0, 0, photo.width, photo.height);
+			
+           
+            canvas.toBlob(function (blob) {
+				  const formData = new FormData();
+				  formData.append('file', blob, 'captured_image.png');
+
+				  fetch('/mobile_camera_upload', {
+					method: 'POST',
+					body: formData,
+				    })
+					.then((response) => response.json())
+					.then(data => {
+							console.log(data);
+							$('#responseContainer').html(data['pid'].substring(0,18)+
+							' (Class: '+data['class_id']+', prob:'+parseFloat(data['confidence']).toFixed(2)+
+							')<br>'+data['pname']+' 單價:'+data['price']+'元')
+							
+							$('#recommandContainer').html('類似商品:')
+							
+							// Iterate over each object in the JSON array
+							data["similar"].forEach( function (item) {
+								addItem(item);
+								
+							});
+														
+							
+							
+							//photo.style.display = 'block';
+					})
+					.catch((error) => {
+					  console.error('上傳時發生錯誤', error);
+					});
+			})
+            
+          } else {
+            alert('沒有可上傳的照片');
+          }
+        }
+
+
 	
+		// Function to add an item to the list
+		function addItem(data) {
+			var list = document.getElementById('RecommandList');
+			var listItem = document.createElement('li');
 
+			listItem.innerHTML = `${data[0]} (${parseFloat(data[1]).toFixed(2)})`;
+			list.appendChild(listItem);
+		}
 
-</body>  
-</html>  
+        
+    </script>
+
+  </body>
+  
+  
+  
+</html> 

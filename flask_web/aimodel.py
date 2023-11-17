@@ -31,9 +31,9 @@ class AI_model():
         # run the inference
         prediction = self.model.predict(data)
         index = np.argmax(prediction)
-        class_name = self.class_names[index]
+        class_name = self.class_names[index].strip()
         print(self.class_names)
-        confidence_score = prediction[0][index]
+        confidence_score = float(prediction[0][index])
         
         return confidence_score,class_name
     

@@ -133,7 +133,7 @@ def  trigger_new_item(msg):
      emit('new_item_event', {'data': newitems }, broadcast=False)
 
 @app.route('/upload', methods = ['POST','GET'])  
-def success():  
+def upload():  
     if request.method == 'POST':  
         f = request.files['file']  
         f.save('web/upload/'+f.filename)  
@@ -144,8 +144,46 @@ def success():
 
         print('Class:', label, end='')
         print('Confidence score:', prob)
-     
-        return render_template("success.html", name = img_file,class_name=label,confidence=prob)  
+         
+        return render_template("success.html", name = img_file,class_name=label,confidence=prob) 
+
+
+#classid_to_prod_info={'0':'蘋果','1':'香蕉','2':'葡萄'}
+'''
+7c93ee17-9ef3-479c-a9e2-c4791ae422da 新東陽原味德式香腸-160g 85 3303 39
+5674d374-fe32-4898-991e-e30bb92e8b2c 百事可樂 29 667 23
+1be09c5d-ef6d-4ef5-8ba9-4b17c3f937a2 華元海蝦蝦餅甜辣口味 65 1252 20
+'''
+classid_to_pid={'0':'7c93ee17-9ef3-479c-a9e2-c4791ae422da',
+                '1':'5674d374-fe32-4898-991e-e30bb92e8b2c',
+                '2':'1be09c5d-ef6d-4ef5-8ba9-4b17c3f937a2'
+               }
+
+@app.route('/mobile_camera_upload', methods = ['POST','GET'])  
+def mobile_camera_upload():  
+    if request.method == 'POST':  
+        f = request.files['file']  
+        f.save('web/upload/'+f.filename)  
+        
+        #predict the image 
+        img_file=os.path.join('web/upload',f.filename)
+        prob,label=model.predict(img_file)
+
+        print('Class:', label, end='')
+        print('Confidence score:', prob)
+        
+        class_id=label.split()[0]
+        pid=classid_to_pid[class_id]
+        pname,price=query_name_by_pid(pid)
+        
+        #取出類似商品
+        similar_products=top_k_recommnd_item(pname,k=5)
+        result={"class_id":class_id,"pid":pid,"pname":pname,"price":price,"confidence":prob,
+                'similar':similar_products}
+ 
+        print(json.dumps(result))
+        return json.dumps(result)
+
 
 def init_gpu():
     #----allocate more GPU memory if it needed--------

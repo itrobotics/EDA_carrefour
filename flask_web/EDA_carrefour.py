@@ -31,7 +31,7 @@ def create_product_dict(df):
     return pid_to_product_info
 
 pid_to_product_info=create_product_dict(train_df)
-
+all_product_names=[v[0] for k,v in  pid_to_product_info.items()]
 
 #train_df.describe()
 #train_df.isna().sum()
@@ -193,6 +193,24 @@ def analyze_store_sales(df,store_id,plot=False):
         sns.barplot(x='YearMonth', y='sum', data=df_data)
         
     return df_data
+
+
+## Recommanded system 
+from difflib import SequenceMatcher
+#content-based : only use product name as a factor
+
+def top_k_recommnd_item(p_name,k=5):
+    recommand_list={}
+    for name in all_product_names:
+        similarity = SequenceMatcher(None,name,p_name).ratio()
+        recommand_list[name]=similarity
+        #print(f"{name}({name_to_pid_dict[name]})和{com_prod}相似度為{similarity}")
+    
+    recommand_sorted=sorted(recommand_list.items(), key=lambda item: item[1], reverse=True)[:k]
+    
+    return [(item[0],item[1])  for item in recommand_sorted]
+
+
    
 if __name__=="__main__":
 
@@ -234,3 +252,9 @@ if __name__=="__main__":
     print(dataset)
     # dataset,total_amounts=show_purchase_by_customer(train_df,'003c1701-7951-41f7-8e3e-7c102daa28a0')
     # print(dataset)
+    
+    print('-----------推廌商品-------------')
+    com_prod = "光泉茉莉茶園紅茶蘋果-250ml" #"特上檸檬紅茶"
+    print(top_k_recommnd_item(com_prod,10))
+    
+    
